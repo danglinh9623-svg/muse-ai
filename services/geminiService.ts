@@ -2,18 +2,23 @@ import { GoogleGenAI } from "@google/genai";
 import { WRITER_SYSTEM_INSTRUCTION } from "../constants";
 import { ModelType } from "../types";
 
-// Initialize the client safely. 
+// Validate API Key immediately
 const apiKey = process.env.API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
+if (!apiKey) {
+  console.error("CRITICAL: API_KEY is missing from environment variables.");
+}
 
-// REMOVED: Custom Safety Settings (BLOCK_NONE) as they often cause 400 Bad Request errors 
-// on free tier keys or specific regions. We will use the default safety settings.
+const ai = new GoogleGenAI({ apiKey });
 
 export const generateStoryContentStream = async (
   modelType: ModelType,
   history: { role: string; content: string }[],
   lastUserMessage: string
 ) => {
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please check your Vercel settings.");
+  }
+
   try {
     const chat = ai.chats.create({
       model: modelType,
@@ -22,7 +27,6 @@ export const generateStoryContentStream = async (
         temperature: 0.9, 
         topP: 0.95,
         topK: 64,
-        // Removed explicit safetySettings to use defaults (more stable)
       },
       history: history.map(msg => ({
         role: msg.role,
@@ -36,8 +40,17 @@ export const generateStoryContentStream = async (
 
     return result;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    
+    // Check for specific error types to give better feedback
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+       throw new Error(`The model ${modelType} is currently unavailable. Please switch to a different model in the dropdown.`);
+    }
+    if (error.message?.includes('400') || error.message?.includes('API key')) {
+       throw new Error("Invalid API Request. Check your API Key.");
+    }
+    
     throw error;
   }
 };
@@ -46,6 +59,8 @@ export const enhanceCharacterProfile = async (
   currentProfileData: string,
   instructions: string
 ): Promise<string> => {
+  if (!apiKey) throw new Error("API Key missing");
+
   try {
     const response = await ai.models.generateContent({
       model: ModelType.DEEP_CREATIVE, 
@@ -59,7 +74,6 @@ export const enhanceCharacterProfile = async (
       `,
       config: {
         responseMimeType: "application/json",
-        // Removed explicit safetySettings
       }
     });
     
@@ -71,19 +85,18 @@ export const enhanceCharacterProfile = async (
 };
 
 export const generateChatTitle = async (firstUserMessage: string, firstAiMessage: string): Promise<string | null> => {
+  if (!apiKey) return null;
+
   try {
-    // Use 'gemini-flash-latest' (1.5 Flash) for title generation. 
-    // It is extremely stable, fast, and unlikely to error out on config.
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest', 
-      contents: `Read the following story opening and generate a short, evocative title (max 6 words). Do not use quotes or prefixes like "Title:". Just the title.
+      model: 'gemini-1.5-flash', // Explicitly use 1.5 flash for utilities
+      contents: `Read the following story opening and generate a short, evocative title (max 6 words). Do not use quotes.
       
       User Input: ${firstUserMessage.slice(0, 300)}
       AI Response: ${firstAiMessage.slice(0, 300)}`,
       config: {
         temperature: 0.7,
         maxOutputTokens: 20,
-        // Removed thinkingConfig as it is not supported on 1.5 Flash
       }
     });
     
@@ -94,7 +107,7 @@ export const generateChatTitle = async (firstUserMessage: string, firstAiMessage
     }
     return null;
   } catch (e) {
-    console.warn("Title generation failed, falling back to default.", e);
+    console.warn("Title generation failed.", e);
     return null;
   }
 };

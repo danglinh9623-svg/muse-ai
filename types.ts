@@ -1,8 +1,8 @@
 export enum ModelType {
-  DEEP_CREATIVE = 'gemini-3-pro-preview', // High Quality (Gemini 3 Pro)
-  FAST_DRAFT = 'gemini-3-flash-preview', // Newest Fast Model (Gemini 3 Flash)
-  QUOTA_SAVER = 'gemini-flash-latest', // Stable Flash (Likely 2.5), good for fallback
-  LITE_SPEED = 'gemini-flash-lite-latest' // Flash Lite, lowest latency/cost
+  DEEP_CREATIVE = 'gemini-1.5-pro', // Best Quality Stable Model (High Context, Nuance)
+  FAST_DRAFT = 'gemini-1.5-flash', // Fast & Efficient
+  QUOTA_SAVER = 'gemini-1.5-flash-8b', // Ultra low cost/latency
+  LITE_SPEED = 'gemini-1.5-flash' // Fallback
 }
 
 export interface Message {

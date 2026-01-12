@@ -79,19 +79,25 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateSession = (newMessages: Message[], usedModel: ModelType, newTitle?: string) => {
+  const handleUpdateSession = (newMessages: Message[], usedModel: ModelType, newTitle?: string | null) => {
     if (!currentSessionId) return;
     
     setSessions(prev => prev.map(s => {
       if (s.id === currentSessionId) {
         
-        // Use provided title, or keep existing, or fallback to truncated text if it was empty
+        // Smart Title Logic:
+        // 1. If AI provided a title (newTitle is string), use it.
+        // 2. If title is still default "New Story" AND we have messages, but AI failed (newTitle is null), 
+        //    truncate the first user message.
+        // 3. Otherwise keep existing title.
+        
         let title = s.title;
+        
         if (newTitle) {
           title = newTitle;
-        } else if (s.title === 'New Story' && newMessages.length > 0) {
-          // Fallback if smart generation wasn't triggered but we have content
-          title = newMessages[0].content.slice(0, 30) + '...';
+        } else if (s.title === 'New Story' && newMessages.length > 0 && newMessages[0].role === 'user') {
+          const userText = newMessages[0].content;
+          title = userText.length > 30 ? userText.slice(0, 30) + '...' : userText;
         }
         
         return {
@@ -122,7 +128,7 @@ const App: React.FC = () => {
   // --- Render ---
 
   return (
-    <div className="flex h-full w-full bg-zinc-900 text-zinc-100">
+    <div className="flex h-full w-full bg-zinc-950 text-zinc-100 font-sans">
       <Sidebar 
         currentView={currentView}
         setCurrentView={setCurrentView}
@@ -135,7 +141,7 @@ const App: React.FC = () => {
         setIsMobileOpen={setIsMobileOpen}
       />
       
-      <main className="flex-1 h-full relative">
+      <main className="flex-1 h-full relative bg-zinc-900 overflow-hidden shadow-2xl shadow-black z-0">
         {currentView === AppView.CHAT ? (
           <ChatInterface 
             messages={activeMessages}
@@ -147,8 +153,8 @@ const App: React.FC = () => {
             onMobileMenuClick={() => setIsMobileOpen(true)}
           />
         ) : (
-          <div className="h-full flex flex-col">
-             <div className="md:hidden h-16 border-b border-zinc-800 flex items-center px-4 bg-zinc-950">
+          <div className="h-full flex flex-col bg-zinc-900">
+             <div className="md:hidden h-16 border-b border-zinc-800/50 flex items-center px-4 bg-zinc-900">
                 <button onClick={() => setIsMobileOpen(true)} className="text-zinc-400">
                   <Menu className="w-6 h-6" />
                 </button>

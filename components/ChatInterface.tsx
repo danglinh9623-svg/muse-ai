@@ -10,11 +10,11 @@ interface ChatInterfaceProps {
   modelType: ModelType;
   setModelType: (type: ModelType) => void;
   currentSessionId: string | null;
-  onUpdateSession: (messages: Message[], model: ModelType, newTitle?: string) => void;
+  onUpdateSession: (messages: Message[], model: ModelType, newTitle?: string | null) => void;
   onMobileMenuClick: () => void;
 }
 
-const WELCOME_MESSAGE = "Hello! I'm Muse, your creative writing partner. I'm here to help you brainstorm ideas, draft chapters, or deepen your characters. What are we writing today?";
+const WELCOME_MESSAGE = "I am Muse, your professional creative partner. I can help you brainstorm complex plots, draft emotive scenes, or develop deep character psychologies. Where shall we begin?";
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
@@ -51,7 +51,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setIsLoading(true);
 
     try {
-      // Placeholder for AI response
       const aiMsgId = (Date.now() + 1).toString();
       const initialAiMsg: Message = {
         id: aiMsgId,
@@ -61,7 +60,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       };
       setMessages(prev => [...prev, initialAiMsg]);
 
-      // Stream handling
       const history = newMessages.map(m => ({ role: m.role, content: m.content }));
       const stream = await generateStoryContentStream(modelType, history.slice(0, -1), textToSend);
       
@@ -71,7 +69,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       for await (const chunk of stream) {
         const chunkText = chunk.text;
         
-        // Capture grounding metadata if present
         if (chunk.candidates?.[0]?.groundingMetadata) {
           groundingMetadata = chunk.candidates[0].groundingMetadata;
         }
@@ -84,7 +81,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         }
       }
 
-      // Append citations if available
       if (groundingMetadata?.groundingChunks) {
         const sources = groundingMetadata.groundingChunks
           .map((c: any) => c.web?.uri)
@@ -99,15 +95,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         }
       }
 
-      // -- Smart Features: Auto-Titling --
-      // If this is the very first turn (messages was empty, so newMessages has 1 item), generate a title
-      let generatedTitle: string | undefined = undefined;
+      // Check if this was the first message exchange to generate a title
+      let generatedTitle: string | null = null;
       if (messages.length === 0) {
-        // Run in background, don't block
+        // We pass the accumulated text (AI response) to the title generator
         generatedTitle = await generateChatTitle(textToSend, accumulatedText);
       }
       
-      // Final save
       onUpdateSession(
         [...newMessages, { ...initialAiMsg, content: accumulatedText }], 
         modelType,
@@ -119,7 +113,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'model',
-        content: '**Error:** Failed to generate response. Please check your API Key or quota.',
+        content: '**System Error:** Failed to generate response. This usually happens if the API Key is invalid, or the model is overloaded. \n\nCheck the browser console (F12) for more details.',
         timestamp: Date.now()
       }]);
     } finally {
@@ -139,91 +133,89 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
     
     if (lastUserIndex === -1) return;
-
     const lastUserMsg = messages[lastUserIndex];
-    
     const historyUntilUser = messages.slice(0, lastUserIndex); 
     setMessages(historyUntilUser); 
-    
-    onUpdateSession(historyUntilUser, modelType);
+    onUpdateSession(historyUntilUser, modelType, null);
     handleSend(lastUserMsg.content); 
   };
 
+  const isLastMessageFromModel = messages.length > 0 && messages[messages.length - 1].role === 'model';
+
   return (
     <div className="flex flex-col h-full bg-zinc-900 relative">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-primary-900/10 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[10%] right-[5%] w-[30%] h-[30%] bg-indigo-900/10 rounded-full blur-[100px]"></div>
+      </div>
+
       {/* Top Bar */}
-      <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button onClick={onMobileMenuClick} className="md:hidden text-zinc-400 hover:text-white">
-            <Menu className="w-6 h-6" />
+      <div className="h-14 border-b border-zinc-800/50 flex items-center justify-between px-4 bg-zinc-900/80 backdrop-blur-md sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <button onClick={onMobileMenuClick} className="md:hidden text-zinc-400 hover:text-white transition-colors">
+            <Menu className="w-5 h-5" />
           </button>
           
           <div className="relative group">
-             <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-zinc-800 transition-colors">
-               {modelType === ModelType.DEEP_CREATIVE && <Brain className="w-4 h-4 text-primary-500" />}
-               {modelType === ModelType.FAST_DRAFT && <Zap className="w-4 h-4 text-yellow-500" />}
-               {(modelType === ModelType.QUOTA_SAVER || modelType === ModelType.LITE_SPEED) && <Gauge className="w-4 h-4 text-green-500" />}
+             <div className="flex items-center gap-2 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 rounded-full px-3 py-1.5 cursor-pointer transition-all">
+               {modelType === ModelType.DEEP_CREATIVE && <Brain className="w-3.5 h-3.5 text-primary-400" />}
+               {modelType === ModelType.FAST_DRAFT && <Zap className="w-3.5 h-3.5 text-yellow-500" />}
+               {(modelType === ModelType.QUOTA_SAVER || modelType === ModelType.LITE_SPEED) && <Gauge className="w-3.5 h-3.5 text-green-500" />}
                
                <select 
                  value={modelType}
                  onChange={(e) => setModelType(e.target.value as ModelType)}
-                 className="bg-transparent text-sm font-medium text-zinc-200 appearance-none focus:outline-none cursor-pointer w-[140px] md:w-[180px]"
+                 className="bg-transparent text-xs font-medium text-zinc-300 appearance-none focus:outline-none cursor-pointer w-[140px] md:w-[160px]"
                >
                  <option value={ModelType.DEEP_CREATIVE}>Deep Creative (Pro 3)</option>
                  <option value={ModelType.FAST_DRAFT}>Fast Draft (Flash 3)</option>
                  <option value={ModelType.QUOTA_SAVER}>Balanced (Flash Latest)</option>
                  <option value={ModelType.LITE_SPEED}>Speed (Lite Latest)</option>
                </select>
-               <ChevronDown className="w-4 h-4 text-zinc-500 pointer-events-none absolute right-2" />
+               <ChevronDown className="w-3 h-3 text-zinc-500 pointer-events-none absolute right-2.5" />
              </div>
           </div>
         </div>
-        
-        {messages.length > 0 && (
-           <button 
-             onClick={handleRegenerate}
-             disabled={isLoading}
-             className="text-zinc-500 hover:text-primary-400 transition-colors p-2 rounded-full hover:bg-zinc-800 flex-shrink-0 ml-2"
-             title="Regenerate Last Response"
-           >
-             <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-           </button>
-        )}
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-6 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent z-10">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center space-y-8 px-4">
+          <div className="h-full flex flex-col items-center justify-center space-y-10 px-4 min-h-[60vh]">
             
-            {/* Logo / Icon Area */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary-500/20 blur-2xl rounded-full"></div>
-              <Sparkles className="w-16 h-16 text-primary-500 relative z-10 opacity-90" />
+            {/* Logo / Hero Area */}
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary-500 to-indigo-500 rounded-full blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-1000"></div>
+              <Sparkles className="w-16 h-16 text-zinc-200 relative z-10 drop-shadow-2xl" />
             </div>
 
-            {/* Greeting "Message Bubble" - Left Aligned */}
-            <div className="w-full flex justify-start animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-2xl">
-               <div className="bg-zinc-800/80 border border-zinc-700/50 p-5 rounded-2xl rounded-tl-none shadow-xl relative ml-4">
-                  {/* Small avatar indicator */}
-                  <div className="absolute -left-4 top-0 w-3 h-3 bg-primary-500 rounded-full mt-1"></div>
-                  <p className="text-zinc-200 font-serif leading-relaxed text-lg">
-                    {WELCOME_MESSAGE}
-                  </p>
-               </div>
+            {/* Greeting */}
+            <div className="max-w-2xl text-center space-y-4">
+               <h2 className="text-3xl md:text-4xl font-serif font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-400 tracking-tight">
+                 Unleash your imagination
+               </h2>
+               <p className="text-zinc-400 text-lg leading-relaxed max-w-lg mx-auto">
+                 {WELCOME_MESSAGE}
+               </p>
             </div>
 
-            {/* Quote & Tip Section */}
-            <div className="text-center space-y-4 max-w-lg">
-              <p className="text-xl font-serif italic text-zinc-600">
-                "Every story begins with a single thought..."
-              </p>
-              
-              <div className="inline-block bg-zinc-950/80 border border-zinc-800 rounded-full px-4 py-2">
-                 <p className="text-xs text-zinc-500 font-sans">
-                  <span className="font-semibold text-primary-500/80">Tip:</span> Switch to "Quota Saver" or "Speed" modes if you run into rate limits.
-                </p>
-              </div>
+            {/* Action Chips */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+              {[
+                "Develop a villain's backstory",
+                "Describe a cyberpunk city in rain",
+                "Write a dialogue with subtext",
+                "Brainstorm plot twists for a mystery"
+              ].map((prompt, i) => (
+                <button 
+                  key={i} 
+                  onClick={() => handleSend(prompt)}
+                  className="px-4 py-3 bg-zinc-800/40 hover:bg-zinc-800 border border-zinc-800/60 hover:border-zinc-700 rounded-xl text-sm text-zinc-400 hover:text-zinc-200 text-left transition-all"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
 
           </div>
@@ -231,19 +223,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           messages.map((msg) => (
             <div 
               key={msg.id} 
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div 
-                className={`max-w-[85%] md:max-w-2xl p-4 md:p-6 rounded-2xl ${
+                className={`max-w-[90%] md:max-w-3xl p-5 shadow-sm ${
                   msg.role === 'user' 
-                    ? 'bg-zinc-800 text-zinc-100 rounded-br-sm' 
-                    : 'bg-transparent border border-zinc-800 text-zinc-200 rounded-bl-sm shadow-sm'
+                    ? 'bg-[#3f3f46] text-white rounded-2xl rounded-tr-sm' 
+                    : 'bg-transparent text-zinc-300 pl-0 md:pl-2'
                 }`}
               >
                 {msg.role === 'user' ? (
-                  <p className="whitespace-pre-wrap font-sans text-sm md:text-base">{msg.content}</p>
+                  <p className="whitespace-pre-wrap font-sans text-sm md:text-base leading-relaxed">{msg.content}</p>
                 ) : (
-                  <div className="prose prose-invert prose-sm md:prose-base font-serif max-w-none prose-p:leading-relaxed prose-headings:font-sans prose-a:text-primary-400">
+                  <div className="prose prose-invert prose-zinc max-w-none prose-p:leading-7 prose-headings:font-sans prose-headings:font-semibold prose-a:text-primary-400 prose-blockquote:border-l-primary-500 prose-blockquote:bg-zinc-800/30 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 )}
@@ -251,12 +243,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
           ))
         )}
+        
+        {/* Regenerate Button - Placed at bottom */}
+        {isLastMessageFromModel && !isLoading && (
+          <div className="flex justify-start md:pl-2">
+            <button 
+              onClick={handleRegenerate}
+              className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 rounded hover:bg-zinc-800/50"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Regenerate Response
+            </button>
+          </div>
+        )}
+        
         <div ref={bottomRef} />
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-zinc-950 border-t border-zinc-800">
-        <div className="max-w-3xl mx-auto relative">
+      <div className="p-4 md:p-6 bg-transparent z-20">
+        <div className="max-w-3xl mx-auto relative group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-500/20 to-indigo-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500"></div>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -266,8 +273,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 handleSend();
               }
             }}
-            placeholder="Describe a scene, ask for a plot twist, or paste a draft..."
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-xl pl-4 pr-12 py-4 shadow-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 resize-none font-sans"
+            placeholder="Write something magical..."
+            className="w-full bg-[#18181b] border border-zinc-800 text-zinc-100 rounded-xl pl-5 pr-12 py-4 shadow-2xl focus:outline-none focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 resize-none font-sans relative z-10 placeholder-zinc-500"
             rows={1}
             style={{ minHeight: '60px', maxHeight: '200px' }}
             disabled={isLoading}
@@ -275,13 +282,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <button 
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
-            className="absolute right-3 bottom-3 p-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+            className="absolute right-3 bottom-3 p-2 bg-zinc-100 hover:bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all z-20 shadow-lg hover:shadow-xl"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-center text-xs text-zinc-600 mt-2 font-mono">
-          Gemini may produce inaccurate information. Stories are fictional.
+        <p className="text-center text-[10px] text-zinc-600 mt-3 font-medium">
+          MuseAI can make mistakes. Verify important info.
         </p>
       </div>
     </div>

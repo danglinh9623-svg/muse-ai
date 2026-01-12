@@ -1,31 +1,13 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { WRITER_SYSTEM_INSTRUCTION } from "../constants";
 import { ModelType } from "../types";
 
 // Initialize the client safely. 
-// We provide a fallback empty string if API_KEY is missing to prevent immediate crash on module load.
-// The actual API call will fail gracefully later if the key is invalid.
 const apiKey = process.env.API_KEY || "";
 const ai = new GoogleGenAI({ apiKey });
 
-const safetySettings = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-];
+// REMOVED: Custom Safety Settings (BLOCK_NONE) as they often cause 400 Bad Request errors 
+// on free tier keys or specific regions. We will use the default safety settings.
 
 export const generateStoryContentStream = async (
   modelType: ModelType,
@@ -37,11 +19,10 @@ export const generateStoryContentStream = async (
       model: modelType,
       config: {
         systemInstruction: WRITER_SYSTEM_INSTRUCTION,
-        temperature: 0.9, // Higher creativity
+        temperature: 0.9, 
         topP: 0.95,
         topK: 64,
-        safetySettings: safetySettings,
-        tools: [{ googleSearch: {} }], // Enable grounding for fandom research
+        // Removed explicit safetySettings to use defaults (more stable)
       },
       history: history.map(msg => ({
         role: msg.role,
@@ -67,7 +48,7 @@ export const enhanceCharacterProfile = async (
 ): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: ModelType.DEEP_CREATIVE, // Always use Pro for character work
+      model: ModelType.DEEP_CREATIVE, 
       contents: `
         ${instructions}
         
@@ -78,7 +59,7 @@ export const enhanceCharacterProfile = async (
       `,
       config: {
         responseMimeType: "application/json",
-        safetySettings: safetySettings,
+        // Removed explicit safetySettings
       }
     });
     
@@ -89,26 +70,31 @@ export const enhanceCharacterProfile = async (
   }
 };
 
-export const generateChatTitle = async (firstUserMessage: string, firstAiMessage: string): Promise<string> => {
+export const generateChatTitle = async (firstUserMessage: string, firstAiMessage: string): Promise<string | null> => {
   try {
+    // Use 'gemini-flash-latest' (1.5 Flash) for title generation. 
+    // It is extremely stable, fast, and unlikely to error out on config.
     const response = await ai.models.generateContent({
-      model: ModelType.FAST_DRAFT, // Use Flash for speed
+      model: 'gemini-flash-latest', 
       contents: `Read the following story opening and generate a short, evocative title (max 6 words). Do not use quotes or prefixes like "Title:". Just the title.
       
-      User Input: ${firstUserMessage.slice(0, 500)}
-      AI Response: ${firstAiMessage.slice(0, 500)}`,
+      User Input: ${firstUserMessage.slice(0, 300)}
+      AI Response: ${firstAiMessage.slice(0, 300)}`,
       config: {
         temperature: 0.7,
         maxOutputTokens: 20,
-        thinkingConfig: { thinkingBudget: 0 } 
+        // Removed thinkingConfig as it is not supported on 1.5 Flash
       }
     });
     
-    let title = response.text?.trim() || "Untitled Story";
-    // Remove quotes if the model added them
-    title = title.replace(/^["']|["']$/g, '');
-    return title;
+    let title = response.text?.trim();
+    if (title) {
+       title = title.replace(/^["']|["']$/g, '');
+       return title;
+    }
+    return null;
   } catch (e) {
-    return "Untitled Story";
+    console.warn("Title generation failed, falling back to default.", e);
+    return null;
   }
 };

@@ -111,7 +111,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const errorMsg = error.message || "Unknown error occurred.";
       
       setMessages(prev => {
-        // Remove the empty loading message if it exists
         const cleanPrev = prev.filter(m => m.content !== '');
         return [...cleanPrev, {
           id: Date.now().toString(),
@@ -180,39 +179,33 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 md:px-0 space-y-6 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent z-10">
-        <div className="max-w-3xl mx-auto w-full">
+        <div className="max-w-3xl mx-auto w-full h-full relative">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center space-y-12 px-4 min-h-[60vh]">
-              
-              {/* Logo - Minimal */}
-              <div className="bg-zinc-800 p-4 rounded-full">
-                <Sparkles className="w-8 h-8 text-zinc-100" />
-              </div>
+            <div className="h-full flex flex-col relative">
+                
+                {/* 1. Background Text (Centered, Faded) */}
+                <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none opacity-[0.03]">
+                    <h1 className="text-4xl md:text-6xl font-serif font-bold text-center px-4 leading-tight text-white">
+                        Every story begins with<br/>a single thought...
+                    </h1>
+                </div>
 
-              {/* Greeting - Clean Typography */}
-              <div className="text-center space-y-2">
-                 <h2 className="text-2xl font-medium text-white">
-                   Unleash your imagination
-                 </h2>
-              </div>
-
-              {/* Action Chips - Simple Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                {[
-                  "Develop a villain's backstory",
-                  "Describe a cyberpunk city in rain",
-                  "Write a dialogue with subtext",
-                  "Brainstorm plot twists for a mystery"
-                ].map((prompt, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => handleSend(prompt)}
-                    className="px-4 py-3 bg-transparent border border-zinc-700 hover:bg-zinc-800 rounded-xl text-sm text-zinc-300 hover:text-white text-left transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+                {/* 2. Welcome Bubble (Left side) */}
+                <div className="z-10 mt-6 md:mt-10 px-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                     <div className="flex w-full justify-start">
+                        <div className="max-w-[85%] md:max-w-xl bg-zinc-800 text-zinc-100 px-6 py-5 rounded-3xl rounded-tl-sm shadow-xl border border-white/5">
+                             <div className="flex items-center gap-2 mb-3">
+                                <div className="p-1 bg-zinc-700 rounded-md">
+                                    <Sparkles className="w-3.5 h-3.5 text-primary-400" />
+                                </div>
+                                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Muse AI</span>
+                             </div>
+                             <p className="text-[15px] leading-relaxed text-zinc-200 font-sans">
+                                {WELCOME_MESSAGE}
+                             </p>
+                        </div>
+                    </div>
+                </div>
 
             </div>
           ) : (
@@ -224,7 +217,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div 
                   className={`w-full ${
                     msg.role === 'user' 
-                      ? 'max-w-[85%] bg-[#3f3f46] text-white px-5 py-3 rounded-3xl rounded-br-md' 
+                      ? 'max-w-[85%] bg-[#3f3f46] text-white px-5 py-3 rounded-3xl rounded-br-md shadow-md' 
                       : 'max-w-full text-zinc-100 px-0' // AI full width text
                   }`}
                 >

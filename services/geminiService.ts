@@ -2,9 +2,11 @@ import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { WRITER_SYSTEM_INSTRUCTION } from "../constants";
 import { ModelType } from "../types";
 
-// Initialize the client
-// process.env.API_KEY is handled by Vite via define in vite.config.ts
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the client safely. 
+// We provide a fallback empty string if API_KEY is missing to prevent immediate crash on module load.
+// The actual API call will fail gracefully later if the key is invalid.
+const apiKey = process.env.API_KEY || "";
+const ai = new GoogleGenAI({ apiKey });
 
 const safetySettings = [
   {
@@ -38,8 +40,6 @@ export const generateStoryContentStream = async (
         temperature: 0.9, // Higher creativity
         topP: 0.95,
         topK: 64,
-        // Removed maxOutputTokens: 8192 to allow Gemini 3 models to manage their own budget
-        // or prevent conflicts with thinking models without a defined budget.
         safetySettings: safetySettings,
         tools: [{ googleSearch: {} }], // Enable grounding for fandom research
       },
@@ -100,7 +100,6 @@ export const generateChatTitle = async (firstUserMessage: string, firstAiMessage
       config: {
         temperature: 0.7,
         maxOutputTokens: 20,
-        // Disable thinking for this short task to respect maxOutputTokens
         thinkingConfig: { thinkingBudget: 0 } 
       }
     });

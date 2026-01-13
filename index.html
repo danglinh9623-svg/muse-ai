@@ -8,6 +8,8 @@
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#18181b" />
     <meta name="description" content="Professional creative writing AI assistant." />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     
     <!-- Icons -->
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/192/magic-quill.png" />
@@ -37,7 +39,21 @@
     <div id="root" class="h-full flex"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
-      // 1. Register Service Worker (REQUIRED for PWA)
+      // Global variable to store the install prompt
+      window.deferredPrompt = null;
+
+      // 1. PWA Install Prompt Capture (Must run ASAP)
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        window.deferredPrompt = e;
+        console.log("PWA install prompt captured globally");
+        // Dispatch custom event if React needs it (optional now, as we check window directly)
+        window.dispatchEvent(new Event('pwa-ready'));
+      });
+
+      // 2. Register Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
@@ -45,15 +61,6 @@
             .catch(err => console.log('SW registration failed', err));
         });
       }
-
-      // 2. PWA Install Prompt Capture
-      window.deferredPrompt = null;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        window.deferredPrompt = e;
-        // Dispatch a custom event to notify React components
-        window.dispatchEvent(new Event('pwa-ready'));
-      });
     </script>
   </body>
 </html>

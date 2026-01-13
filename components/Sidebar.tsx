@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, MessageSquare, Users, Trash2, Download, BookOpen, Menu, X, Sparkles, Check, Loader2 } from 'lucide-react';
+import { Plus, MessageSquare, Users, Trash2, Download, BookOpen, Menu, X, Check } from 'lucide-react';
 import { AppView, ChatSession } from '../types';
 
 interface SidebarProps {
@@ -25,62 +25,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   setIsMobileOpen
 }) => {
-  // State: 
-  // null = đang kiểm tra
-  // true = có thể cài (đã bắt được sự kiện)
-  // false = không thể cài (đã cài rồi hoặc trình duyệt ko hỗ trợ)
-  const [canInstall, setCanInstall] = useState<boolean | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // 1. Kiểm tra xem đã cài chưa (Standalone mode)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Kiểm tra nếu đang chạy trong mode App (Standalone)
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                               (window.navigator as any).standalone === true;
+    
+    if (isInStandaloneMode) {
       setIsInstalled(true);
-      setCanInstall(false);
-      return;
     }
-
-    // 2. Lắng nghe sự kiện từ trình duyệt
-    const handleReady = () => {
-      console.log("PWA Install prompt captured!");
-      setCanInstall(true);
-    };
-
-    window.addEventListener('pwa-ready', handleReady);
-
-    // 3. Check ngay lập tức nếu sự kiện đã xảy ra trước đó
-    if ((window as any).deferredPrompt) {
-      setCanInstall(true);
-    } else {
-      // Nếu chưa có prompt ngay, đợi 1 chút xem sao
-      // (Một số trình duyệt mobile cần vài giây sau khi load trang)
-      setTimeout(() => {
-        if (!(window as any).deferredPrompt && !isInstalled) {
-          setCanInstall(false); // Ẩn nút nếu sau 2s vẫn ko thấy gì
-        }
-      }, 3000);
-    }
-
-    return () => window.removeEventListener('pwa-ready', handleReady);
   }, []);
   
   const handleInstallClick = async () => {
+    // Lấy sự kiện đã lưu từ window (được bắt ở index.html)
     const promptEvent = (window as any).deferredPrompt;
     
     if (promptEvent) {
-      // Bắt buộc hiện Popup chuẩn của hệ thống
+      // Có sự kiện -> Bung popup hệ thống
       promptEvent.prompt();
-      
       const { outcome } = await promptEvent.userChoice;
-      console.log(`Kết quả cài đặt: ${outcome}`);
-      
+      console.log(`User install choice: ${outcome}`);
       if (outcome === 'accepted') {
         (window as any).deferredPrompt = null;
-        setCanInstall(false);
       }
     } else {
-      // Fallback cực chẳng đã
-      alert("Trình duyệt của bạn đang chặn cài đặt tự động. Hãy thử tải lại trang hoặc kiểm tra trong menu Cài đặt của Chrome.");
+      // Không bắt được sự kiện (do trình duyệt chặn hoặc là iOS) -> Hướng dẫn thủ công
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      
+      if (isIOS) {
+        alert("Trên iPhone/iPad: Bấm nút Chia sẻ (Share) ở dưới cùng, sau đó chọn 'Thêm vào Màn hình chính' (Add to Home Screen).");
+      } else {
+        alert("Không thể tự động mở popup cài đặt.\n\nHãy bấm vào menu (3 chấm ⋮) của trình duyệt và chọn 'Cài đặt ứng dụng' (Install App).");
+      }
     }
   };
 
@@ -167,29 +144,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer / Install */}
       <div className="p-4 border-t border-zinc-800/60 bg-zinc-950/50">
         {isInstalled ? (
-           <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1">
+           <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1 bg-zinc-900/50 rounded border border-zinc-800">
              <Check className="w-4 h-4 text-green-500" />
              <span>Đã cài đặt</span>
            </div>
         ) : (
-          <>
-            {canInstall === true && (
-              <button 
-                onClick={handleInstallClick}
-                className="flex items-center gap-2 text-xs font-medium transition-colors w-full px-2 text-primary-400 hover:text-primary-300 animate-pulse bg-primary-500/10 p-2 rounded border border-primary-500/20"
-              >
-                <Download className="w-4 h-4" />
-                <span>Tải App về máy</span>
-              </button>
-            )}
-            {canInstall === null && (
-               <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1">
-                 <Loader2 className="w-3 h-3 animate-spin" />
-                 <span>Đang kiểm tra...</span>
-               </div>
-            )}
-            {/* Nếu canInstall === false (không hỗ trợ hoặc chưa sẵn sàng), ta ẩn luôn nút để đỡ gây ức chế */}
-          </>
+          <button 
+            onClick={handleInstallClick}
+            className="flex items-center gap-2 text-xs font-bold transition-all w-full px-3 py-2.5 text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-lg shadow-primary-900/20 active:scale-95"
+          >
+            <Download className="w-4 h-4" />
+            <span>Cài đặt App</span>
+          </button>
         )}
       </div>
     </div>

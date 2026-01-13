@@ -37,11 +37,22 @@
     <div id="root" class="h-full flex"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
-      // PWA Install Prompt Capture
+      // 1. Register Service Worker (REQUIRED for PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered'))
+            .catch(err => console.log('SW registration failed', err));
+        });
+      }
+
+      // 2. PWA Install Prompt Capture
       window.deferredPrompt = null;
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         window.deferredPrompt = e;
+        // Dispatch a custom event to notify React components
+        window.dispatchEvent(new Event('pwa-ready'));
       });
     </script>
   </body>

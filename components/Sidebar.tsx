@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Kiểm tra nếu đang chạy trong mode App (Standalone)
+    // Check if running in standalone mode (installed)
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
                                (window.navigator as any).standalone === true;
     
@@ -38,11 +38,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, []);
   
   const handleInstallClick = async () => {
-    // Lấy sự kiện đã lưu từ window (được bắt ở index.html)
     const promptEvent = (window as any).deferredPrompt;
     
     if (promptEvent) {
-      // Có sự kiện -> Bung popup hệ thống
+      // Browser supports automatic prompt
       promptEvent.prompt();
       const { outcome } = await promptEvent.userChoice;
       console.log(`User install choice: ${outcome}`);
@@ -50,13 +49,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         (window as any).deferredPrompt = null;
       }
     } else {
-      // Không bắt được sự kiện (do trình duyệt chặn hoặc là iOS) -> Hướng dẫn thủ công
+      // Fallback for browsers blocking the prompt or iOS
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
       
       if (isIOS) {
-        alert("Trên iPhone/iPad: Bấm nút Chia sẻ (Share) ở dưới cùng, sau đó chọn 'Thêm vào Màn hình chính' (Add to Home Screen).");
+        alert("Hướng dẫn cài trên iOS:\n\n1. Bấm nút Chia sẻ (Share) ở thanh dưới cùng.\n2. Chọn 'Thêm vào Màn hình chính' (Add to Home Screen).");
       } else {
-        alert("Không thể tự động mở popup cài đặt.\n\nHãy bấm vào menu (3 chấm ⋮) của trình duyệt và chọn 'Cài đặt ứng dụng' (Install App).");
+        alert("Hướng dẫn cài trên Android:\n\n1. Bấm vào nút menu (3 chấm ⋮) ở góc trên bên phải trình duyệt.\n2. Chọn 'Cài đặt ứng dụng' (Install App) hoặc 'Thêm vào màn hình chính'.");
       }
     }
   };
@@ -154,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2 text-xs font-bold transition-all w-full px-3 py-2.5 text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-lg shadow-primary-900/20 active:scale-95"
           >
             <Download className="w-4 h-4" />
-            <span>Cài đặt App</span>
+            <span>Cài App về máy</span>
           </button>
         )}
       </div>

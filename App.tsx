@@ -5,10 +5,15 @@ import { CharacterBuilder } from './components/CharacterBuilder';
 import { AppView, ChatSession, CharacterProfile, Message, ModelType } from './types';
 import { Menu } from 'lucide-react';
 
-// Helper for local storage
+// Helper for local storage with error handling
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
-  const saved = localStorage.getItem(key);
-  return saved ? JSON.parse(saved) : fallback;
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch (e) {
+    console.error(`Failed to load ${key} from storage`, e);
+    return fallback;
+  }
 };
 
 const App: React.FC = () => {

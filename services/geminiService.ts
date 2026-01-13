@@ -27,6 +27,8 @@ export const generateStoryContentStream = async (
         temperature: 0.9, 
         topP: 0.95,
         topK: 64,
+        // Enable Google Search for grounding
+        tools: [{ googleSearch: {} }],
       },
       history: history.map(msg => ({
         role: msg.role,

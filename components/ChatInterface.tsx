@@ -185,7 +185,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 
                 {/* 1. Background Text (Centered, Faded) */}
                 <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none opacity-[0.03]">
-                    <h1 className="text-4xl md:text-6xl font-serif font-bold text-center px-4 leading-tight text-white">
+                    <h1 className="text-2xl md:text-4xl font-serif font-bold text-center px-4 leading-tight text-white">
                         Every story begins with<br/>a single thought...
                     </h1>
                 </div>

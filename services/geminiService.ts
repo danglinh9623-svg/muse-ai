@@ -2,12 +2,23 @@ import { GoogleGenAI } from "@google/genai";
 import { WRITER_SYSTEM_INSTRUCTION } from "../constants";
 import { ModelType } from "../types";
 
-// Validate API Key immediately
-const apiKey = process.env.API_KEY || "";
-if (!apiKey) {
-  console.error("CRITICAL: API_KEY is missing from environment variables.");
-}
+// Helper to reliably get the key from Vite's replacement or import.meta
+const getApiKey = () => {
+  // Try the process.env replacement first (handled by vite.config.ts)
+  const key = process.env.API_KEY;
+  if (key && key.length > 0) return key;
+  
+  // Fallback check for Vite specific env (if user named it VITE_API_KEY)
+  if (import.meta.env && import.meta.env.VITE_API_KEY) {
+    return import.meta.env.VITE_API_KEY;
+  }
+  
+  return "";
+};
 
+const apiKey = getApiKey();
+
+// Initialize casually, but validate strictly inside functions
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateStoryContentStream = async (
@@ -16,7 +27,7 @@ export const generateStoryContentStream = async (
   lastUserMessage: string
 ) => {
   if (!apiKey) {
-    throw new Error("API Key is missing. Please check your Vercel settings.");
+    throw new Error("System Error: API Key is missing. Please check your Vercel Project Settings > Environment Variables > API_KEY.");
   }
 
   try {
@@ -27,7 +38,6 @@ export const generateStoryContentStream = async (
         temperature: 0.9, 
         topP: 0.95,
         topK: 64,
-        // Enable Google Search for grounding
         tools: [{ googleSearch: {} }],
       },
       history: history.map(msg => ({
@@ -45,9 +55,8 @@ export const generateStoryContentStream = async (
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     
-    // Check for specific error types to give better feedback
     if (error.message?.includes('404') || error.message?.includes('not found')) {
-       throw new Error(`The model ${modelType} is currently unavailable. Please switch to a different model in the dropdown.`);
+       throw new Error(`The model ${modelType} is currently unavailable. Please switch to a different model.`);
     }
     if (error.message?.includes('400') || error.message?.includes('API key')) {
        throw new Error("Invalid API Request. Check your API Key.");
@@ -91,7 +100,7 @@ export const generateChatTitle = async (firstUserMessage: string, firstAiMessage
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash', // Explicitly use 1.5 flash for utilities
+      model: 'gemini-3-flash-preview',
       contents: `Read the following story opening and generate a short, evocative title (max 6 words). Do not use quotes.
       
       User Input: ${firstUserMessage.slice(0, 300)}
@@ -109,7 +118,6 @@ export const generateChatTitle = async (firstUserMessage: string, firstAiMessage
     }
     return null;
   } catch (e) {
-    console.warn("Title generation failed.", e);
     return null;
   }
 };

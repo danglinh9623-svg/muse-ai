@@ -27,7 +27,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  // Remove iOS specific logic to avoid confusion. Focus on Native Install.
 
   useEffect(() => {
     // 1. Check if already installed
@@ -51,8 +50,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
 
     window.addEventListener('pwa-ready', handlePWAReady);
-    
-    // Also listen for appinstalled event to update UI immediately
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
       setInstallPrompt(null);
@@ -65,15 +62,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (!installPrompt) return;
 
     // Trigger the native Android/Desktop install dialog
-    installPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
-    const { outcome } = await installPrompt.userChoice;
-    console.log(`User install choice: ${outcome}`);
-    
-    // We've used the prompt, so clear it
-    if (outcome === 'accepted') {
-      setInstallPrompt(null);
+    try {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      console.log(`User install choice: ${outcome}`);
+      if (outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    } catch (e) {
+      console.error("Install prompt failed:", e);
     }
   };
 
@@ -160,9 +157,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer / Install */}
       {/* 
           STRICT INSTALL LOGIC:
-          1. If installed -> Show "App Installed".
-          2. If installPrompt is ready (Native Install available) -> Show "Install App" button.
-          3. Else -> Show nothing (Hidden). 
+          - Only show "Install App" button if installPrompt is successfully captured.
+          - If the button appears, clicking it WILL trigger the Android system dialog.
+          - No instructions, no alerts.
       */}
       <div className="p-4 border-t border-zinc-800/60 bg-zinc-950/50">
         {isInstalled ? (

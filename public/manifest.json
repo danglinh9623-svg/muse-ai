@@ -1,11 +1,15 @@
 {
   "name": "MuseAI - Pro Writer",
   "short_name": "MuseAI",
+  "id": "/",
+  "scope": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "orientation": "portrait",
+  "categories": ["productivity", "education", "utilities"],
+  "description": "Professional creative writing AI assistant.",
   "icons": [
     {
       "src": "https://img.icons8.com/fluency/192/magic-quill.png",

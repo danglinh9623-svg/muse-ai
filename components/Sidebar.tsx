@@ -50,15 +50,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   const handleInstallClick = async () => {
     const promptEvent = (window as any).deferredPrompt;
+    
+    // Cách 1: Trình duyệt cho phép tự động bật popup
     if (promptEvent) {
       promptEvent.prompt();
       const { outcome } = await promptEvent.userChoice;
       console.log(`User response to the install prompt: ${outcome}`);
       (window as any).deferredPrompt = null;
       setIsInstallable(false);
+      return;
+    }
+
+    // Cách 2: Trình duyệt chặn hoặc là iOS -> Hướng dẫn thủ công
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    
+    if (isIOS) {
+      alert("Hướng dẫn cài trên iPhone/iPad:\n\n1. Bấm nút Chia sẻ (biểu tượng mũi tên đi lên) ở thanh công cụ dưới cùng.\n2. Chọn 'Thêm vào Màn hình chính' (Add to Home Screen).");
     } else {
-      // Fallback manual instructions
-      alert("To install: Click the install icon in your browser's address bar (Chrome/Edge) or use 'Add to Home Screen' in your browser menu.");
+      alert("Hướng dẫn cài trên Android:\n\n1. Bấm vào dấu 3 chấm (⋮) ở góc trên bên phải trình duyệt Chrome.\n2. Tìm và chọn dòng 'Cài đặt ứng dụng' (Install App) hoặc 'Thêm vào màn hình chính'.");
     }
   };
 
@@ -147,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isInstalled ? (
            <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1">
              <Check className="w-4 h-4 text-green-500" />
-             <span>App Installed</span>
+             <span>Đã cài đặt App</span>
            </div>
         ) : (
           <button 
@@ -159,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <Download className="w-4 h-4" />
-            <span>Install App</span>
+            <span>Cài đặt App</span>
           </button>
         )}
       </div>

@@ -26,37 +26,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsMobileOpen
 }) => {
   const [isInstalled, setIsInstalled] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  // Remove iOS specific logic to avoid confusion. Focus on Native Install.
 
   useEffect(() => {
-    // Check if running in standalone mode (installed)
+    // 1. Check if already installed
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
                                (window.navigator as any).standalone === true;
-    
     if (isInStandaloneMode) {
       setIsInstalled(true);
     }
+
+    // 2. Listen for PWA Ready Event (from index.html)
+    const handlePWAReady = () => {
+      const prompt = (window as any).deferredPrompt;
+      if (prompt) {
+        setInstallPrompt(prompt);
+      }
+    };
+
+    // Check immediately in case it fired before React mounted
+    if ((window as any).deferredPrompt) {
+      setInstallPrompt((window as any).deferredPrompt);
+    }
+
+    window.addEventListener('pwa-ready', handlePWAReady);
+    
+    // Also listen for appinstalled event to update UI immediately
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    });
+
+    return () => window.removeEventListener('pwa-ready', handlePWAReady);
   }, []);
   
   const handleInstallClick = async () => {
-    const promptEvent = (window as any).deferredPrompt;
+    if (!installPrompt) return;
+
+    // Trigger the native Android/Desktop install dialog
+    installPrompt.prompt();
     
-    if (promptEvent) {
-      // Browser supports automatic prompt
-      promptEvent.prompt();
-      const { outcome } = await promptEvent.userChoice;
-      console.log(`User install choice: ${outcome}`);
-      if (outcome === 'accepted') {
-        (window as any).deferredPrompt = null;
-      }
-    } else {
-      // Fallback for browsers blocking the prompt or iOS
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-      
-      if (isIOS) {
-        alert("Hướng dẫn cài trên iOS:\n\n1. Bấm nút Chia sẻ (Share) ở thanh dưới cùng.\n2. Chọn 'Thêm vào Màn hình chính' (Add to Home Screen).");
-      } else {
-        alert("Hướng dẫn cài trên Android:\n\n1. Bấm vào nút menu (3 chấm ⋮) ở góc trên bên phải trình duyệt.\n2. Chọn 'Cài đặt ứng dụng' (Install App) hoặc 'Thêm vào màn hình chính'.");
-      }
+    // Wait for the user to respond to the prompt
+    const { outcome } = await installPrompt.userChoice;
+    console.log(`User install choice: ${outcome}`);
+    
+    // We've used the prompt, so clear it
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
     }
   };
 
@@ -141,20 +158,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer / Install */}
+      {/* 
+          STRICT INSTALL LOGIC:
+          1. If installed -> Show "App Installed".
+          2. If installPrompt is ready (Native Install available) -> Show "Install App" button.
+          3. Else -> Show nothing (Hidden). 
+      */}
       <div className="p-4 border-t border-zinc-800/60 bg-zinc-950/50">
         {isInstalled ? (
-           <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1 bg-zinc-900/50 rounded border border-zinc-800">
-             <Check className="w-4 h-4 text-green-500" />
-             <span>Đã cài đặt</span>
+           <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 w-full px-2 py-1 bg-zinc-900/50 rounded border border-zinc-800 justify-center">
+             <Check className="w-3.5 h-3.5 text-green-500" />
+             <span>App Installed</span>
            </div>
         ) : (
-          <button 
-            onClick={handleInstallClick}
-            className="flex items-center gap-2 text-xs font-bold transition-all w-full px-3 py-2.5 text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-lg shadow-primary-900/20 active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            <span>Cài App về máy</span>
-          </button>
+          installPrompt && (
+            <button 
+              onClick={handleInstallClick}
+              className="flex items-center justify-center gap-2 text-xs font-bold transition-all w-full px-3 py-2.5 text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-lg shadow-primary-900/20 active:scale-95 animate-in fade-in zoom-in duration-300"
+            >
+              <Download className="w-4 h-4" />
+              <span>Install App</span>
+            </button>
+          )
         )}
       </div>
     </div>

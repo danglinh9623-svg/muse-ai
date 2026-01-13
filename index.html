@@ -23,9 +23,9 @@
   <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
@@ -48,6 +48,8 @@
         e.preventDefault();
         // Stash the event so it can be triggered later.
         window.deferredPrompt = e;
+        // Dispatch a custom event so React components know the prompt is ready
+        window.dispatchEvent(new Event('pwa-ready'));
         console.log("PWA install prompt captured globally");
       });
 
